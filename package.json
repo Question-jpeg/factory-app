@@ -9,10 +9,15 @@
     "web": "expo start --web"
   },
   "dependencies": {
+    "@types/lodash": "^4.14.196",
     "expo": "~49.0.5",
     "expo-status-bar": "~1.6.0",
     "react": "18.2.0",
-    "react-native": "0.72.3"
+    "react-native": "0.72.3",
+    "react-native-gesture-handler": "~2.12.0",
+    "react-native-reanimated": "~3.3.0",
+    "expo-asset": "~8.10.1",
+    "expo-updates": "~0.18.11"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",

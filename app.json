@@ -3,7 +3,7 @@
     "name": "factory-app",
     "slug": "factory-app",
     "version": "1.0.0",
-    "orientation": "portrait",
+    "orientation": "landscape",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
@@ -25,6 +25,17 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "6ce1d7e5-257a-4572-a532-860f94b1671b"
+      }
+    },
+    "runtimeVersion": {
+      "policy": "sdkVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/6ce1d7e5-257a-4572-a532-860f94b1671b"
     }
   }
 }
