@@ -1,11 +1,23 @@
-const a = {
-  a: 1,
-  b: 2,
-  c: 3,
-  d: 4,
-};
+// const pushItem = async (id) => {
+//   let counter = 0;
 
-console.log(5%1);
-// const b = [0, 1, 2, 3, 4];
-// const index = 6;
-// console.log(b[index % b.length]);
+//   const aboba = setInterval(() => {
+//     console.log(id, ++counter);
+//     if (counter === 10) clearInterval(aboba)
+//   }, 1000);
+// };
+
+// pushItem(1)
+// setTimeout(() => {
+//   pushItem(2)
+// }, 3500);
+
+
+const a = {
+  4: { index: 0, list: [['a-b'], ['a-c']] }
+}
+
+const { index, list } = a[4]
+a[4].index++
+console.log(index);
+console.log(a[4].index);

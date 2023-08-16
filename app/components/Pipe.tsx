@@ -28,10 +28,6 @@ const Pipe = React.forwardRef(
   ) => {
     const neighbours = useRef<Neighbours>({});
     const [neighboursState, setNeighboursState] = useState<Neighbours>({});
-    const distributionDict = useRef<{ [key: number]: number }>({});
-
-    const updateNumberRef = useRef(0);
-
     const directionsRotations = {
       [DIRECTIONS.LEFT]: "0deg",
       [DIRECTIONS.TOP]: "90deg",
@@ -39,16 +35,27 @@ const Pipe = React.forwardRef(
       [DIRECTIONS.BOTTOM]: "-90deg",
     };
 
+    const G = useRef(0);
+    const H = useRef(0);
+    const Connection = useRef<BuildingAPI>();
+
     useImperativeHandle(
       ref,
       () =>
         ({
           id: BUILDINGS.PIPE.id,
           coords,
-          distributionDict,
           neighbours,
           setEditMode,
-
+          F: () => G.current + H.current,
+          G,
+          H,
+          Connection,
+          refreshNode: () => {
+            G.current = 0;
+            H.current = 0;
+            Connection.current = undefined;
+          },          
           toggleNeighbour: (building) => {
             const targetCoords = building.coords;
 

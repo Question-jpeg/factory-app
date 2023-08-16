@@ -27,21 +27,23 @@ export default function Inventory({
   inventoryVisible,
   selectedBuilding,
   setSelectedBuilding,
+  UIVisible
 }: {
   inventoryVisible: boolean;
   selectedBuilding: Texture | undefined;
   setSelectedBuilding: (building: Texture) => any;
+  UIVisible: boolean
 }) {
-  const x = useSharedValue(-INVENTORY_WIDTH);
+  const x = useSharedValue(0);
 
   const containerStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: x.value }],
   }));
 
   useEffect(() => {
-    if (inventoryVisible) x.value = withTiming(0);
+    if (inventoryVisible && UIVisible) x.value = withTiming(0);
     else x.value = withTiming(-INVENTORY_WIDTH);
-  }, [inventoryVisible]);
+  }, [inventoryVisible, UIVisible]);
 
   return (
     <Animated.View style={[styles.container, containerStyle]}>

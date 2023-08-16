@@ -6,12 +6,13 @@ import React, {
 } from "react";
 import Animated, {
   Easing,
+  interpolate,
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
 } from "react-native-reanimated";
-import { StyleSheet } from "react-native";
+import { Image, StyleSheet } from "react-native";
 import { BuildingAPI, Item as ItemModel, Texture } from "../models";
 import { CELL_BORDER_WIDTH, CELL_SIZE } from "./../config/sizes";
 import { AppContext } from "./../context";
@@ -19,86 +20,60 @@ import { getCoordsDelta, getIJ } from "../utils";
 import { BUILDINGS } from "../textures";
 
 export default function Item({
-  item: { texture, initCoords },
+  item: { texture, initPath },
   destroySelf,
 }: {
   item: ItemModel;
   destroySelf: () => any;
 }) {
-  const { field } = useContext(AppContext);
+  const { blocks } = useContext(AppContext);
 
-  const coords = useRef(initCoords);
-  const { i: initI, j: initJ } = getIJ(initCoords);
+  const [xPath, yPath] = initPath.reduce(
+    (result, coords) => {
+      const { i, j } = getIJ(coords);
+      result[0].push((CELL_SIZE - CELL_BORDER_WIDTH) * j);
+      result[1].push((CELL_SIZE - CELL_BORDER_WIDTH) * i);
+      return result;
+    },
+    [[], []] as number[][]
+  );
 
-  const curBuilding = useRef(field.current[initCoords]);
-  const x = useSharedValue(initJ * (CELL_SIZE - CELL_BORDER_WIDTH));
-  const y = useSharedValue(initI * (CELL_SIZE - CELL_BORDER_WIDTH));
+  const step = useSharedValue(0);
+  const scale = useSharedValue(3);
+  const stepMap = Array.from({ length: initPath.length }, (v, k) => k);
 
-  const exitNode = (variantsCoords: string[]) => {
-    const distributionDict = curBuilding.current.distributionDict.current;
-
-    let index = 0;
-    if (distributionDict[texture.id]) index = distributionDict[texture.id]++;
-    else distributionDict[texture.id] = 1;
-
-    const targetCoords = variantsCoords[index % variantsCoords.length];
-    const { i, j } = getIJ(targetCoords);
-    const { i: iDelta } = getCoordsDelta(coords.current, targetCoords);
-
-    const prevCoords = coords.current;
-    coords.current = targetCoords;
-    curBuilding.current = field.current[targetCoords];
-
-    if (iDelta)
-      y.value = withTiming(
-        (CELL_SIZE - CELL_BORDER_WIDTH) * i,
-        {
-          duration: 1000,
-          easing: Easing.linear,
-        },
-        () => runOnJS(moveOneStep)(prevCoords)
-      );
-    else
-      x.value = withTiming(
-        (CELL_SIZE - CELL_BORDER_WIDTH) * j,
-        {
-          duration: 1000,
-          easing: Easing.linear,
-        },
-        () => runOnJS(moveOneStep)(prevCoords)
-      );
-  };
-
-  const moveOneStep = (prevCoords: string) => {
-    const neighbours = { ...curBuilding.current.neighbours.current };
-    if (curBuilding.current.id !== BUILDINGS.PIPE.id) {
-      if (!prevCoords) {
-        const servosCoords = Object.values(neighbours)
-          .filter(({ servo }) => servo)
-          .map(({ building }) => building.coords);
-        if (!servosCoords.length) destroySelf();
-        else exitNode(servosCoords);
-      } else {
-        curBuilding.current.pushItem(texture);
-        destroySelf();
-      }
-    } else {
-      delete neighbours[prevCoords];
-      const neighboursCoords = Object.keys(neighbours);
-      if (!neighboursCoords.length) destroySelf();
-      else if (neighboursCoords.length === 1) exitNode(neighboursCoords);
-      else {
-      }
-    }
+  const onFinish = () => {
+    blocks.current[initPath.at(-1)!].block.pushItem({
+      texture,
+      destroyItem: destroySelf,
+    });
+    scale.value = withTiming(3);
   };
 
   useEffect(() => {
-    moveOneStep("");
+    const lastIndex = initPath.length - 1;
+    step.value = withTiming(
+      lastIndex,
+      {
+        duration: 1000 * lastIndex,
+        easing: Easing.linear,
+      },
+      (finished) => finished && runOnJS(onFinish)()
+    );
+    scale.value = withTiming(1);
+
+    return function cleanup() {
+      step.value = 0;
+    };
   }, []);
 
-  const itemStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: x.value }, { translateY: y.value }],
-  }));
+  const itemStyle = useAnimatedStyle(() => {
+    const translateX = interpolate(step.value, stepMap, xPath);
+    const translateY = interpolate(step.value, stepMap, yPath);
+    return {
+      transform: [{ translateX }, { translateY }, { scale: scale.value }],
+    };
+  });
 
   return (
     <Animated.Image source={texture.image} style={[styles.image, itemStyle]} />
@@ -109,7 +84,6 @@ const styles = StyleSheet.create({
   image: {
     width: "20%",
     height: "20%",
-    // borderRadius: 3,
     position: "absolute",
   },
 });

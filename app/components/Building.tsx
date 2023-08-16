@@ -10,9 +10,22 @@ import { CELL_BORDER_WIDTH, CELL_SIZE } from "../config/sizes";
 import { AppContext } from "../context";
 import { EDIT_MODES } from "../enums";
 import { BuildingAPI, Neighbours, Texture } from "../models";
-import { ATTACHMENTS, BUILDINGS, RESOURCE_BLOCKS } from "../textures";
+import { ATTACHMENTS, BUILDINGS, RESOURCES } from "../textures";
 import { getNeighboursDict } from "../utils";
 import { times } from "lodash";
+import { useExtractor } from "./buildings/useExtractor";
+import { useHammer } from "./buildings/useHammer";
+// import { useCompressor } from "./buildings/useCompressor";
+import { useSieve } from './buildings/useSieve';
+import { useChest } from './buildings/useChest';
+
+const MAPPING = {
+  [BUILDINGS.EXTRACTOR.id]: () => useExtractor(),
+  [BUILDINGS.HAMMER.id]: () => useHammer(),
+  // [BUILDINGS.COMPRESSOR.id]: () => useCompressor(),
+  [BUILDINGS.SIEVE.id]: () => useSieve(),
+  // [BUILDINGS.CHEST.id]: () => useChest(),
+};
 
 const Building = React.forwardRef(
   (
@@ -28,26 +41,10 @@ const Building = React.forwardRef(
     ref
   ) => {
     const neighbours = useRef<Neighbours>({});
-    const items = useRef<{ [key: number]: number }>();
-    const updateNumberRef = useRef(0);
-    const intervalRef = useRef<any>();
-    const distributionDict = useRef<{ [key: number]: number }>({});
-
-    const { spawner } = useContext(AppContext);
-
-    const pushItem = (item: Texture) => {
-      if (texture.id === BUILDINGS.HAMMER.id) {
-        const converter = {
-          [RESOURCE_BLOCKS.COBBLESTONE.id]: RESOURCE_BLOCKS.GRAVEL,
-          [RESOURCE_BLOCKS.GRAVEL.id]: RESOURCE_BLOCKS.SAND,
-          [RESOURCE_BLOCKS.SAND.id]: RESOURCE_BLOCKS.DUST,
-        };
-        spawner.current?.createItem({
-          initCoords: coords,
-          texture: converter[item.id],
-        });
-      }
-    };
+    const G = useRef(0);
+    const H = useRef(0);
+    const Connection = useRef<BuildingAPI>();
+    const block = MAPPING[texture.id]();
 
     useImperativeHandle(
       ref,
@@ -55,10 +52,18 @@ const Building = React.forwardRef(
         ({
           id: texture.id,
           coords,
-          setEditMode,
           neighbours,
-          distributionDict,
-          pushItem,
+          block,
+          F: () => G.current + H.current,
+          G,
+          H,
+          Connection,
+          refreshNode: () => {
+            G.current = 0;
+            H.current = 0;
+            Connection.current = undefined
+          },          
+          setEditMode,
           initNeighbours: (field) => {
             const buildings = getNeighboursDict(
               coords,
@@ -91,21 +96,6 @@ const Building = React.forwardRef(
           },
         } as BuildingAPI)
     );
-
-    useEffect(() => {
-      if (texture.id === BUILDINGS.EXTRACTOR.id) {
-        intervalRef.current = setInterval(() => {
-          spawner.current?.createItem({
-            texture: RESOURCE_BLOCKS.COBBLESTONE,
-            initCoords: coords,
-          });
-        }, 1000);
-      }
-
-      return function cleanup() {
-        clearInterval(intervalRef.current);
-      };
-    }, []);
 
     return <Image source={texture.image} style={styles.image} />;
   }

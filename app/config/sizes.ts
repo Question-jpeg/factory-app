@@ -1,6 +1,8 @@
 export const CELL_SIZE = 50;
 export const CELL_BORDER_WIDTH = 1;
 export const SIDEBAR_MARGIN_VERTICAL = 20;
+export const SIDEBAR_WIDTH = 90
+export const SIDEBAR_GAP = 20
 export const INVENTORY_WIDTH = 230
 export const INVENTORY_CELL_SIZE = 70
 export const COUNT_SIZE = 30;

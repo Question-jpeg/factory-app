@@ -5,7 +5,8 @@ export enum SELECTIONS {
     CONNECTION,
     SERVO,
     DELETE,
-    BUILD
+    BUILD,
+    PLAY
 }
 
 export enum DIRECTIONS {
