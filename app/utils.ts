@@ -1,8 +1,15 @@
 import { COUNT_SIZE } from "./config/sizes";
 import { join, times } from "lodash";
-import { BuildingAPI, Field, Neighbours } from "./models";
+import {
+  BuildingAPI,
+  Field,
+  Neighbours,
+  Recipe,
+  SavedBuilding,
+} from "./models";
 import { MutableRefObject } from "react";
 import { DIRECTIONS } from "./enums";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export function clampWorklet(number: number, lower: number, upper: number) {
   "worklet";
@@ -78,12 +85,51 @@ export const getNeighboursDict = (
   return rDict;
 };
 
-// export const updateNeighbours = (
-//   updateNumber: number,
-//   neighbours: Neighbours
-// ) => {
-//   Object.values(neighbours).forEach((n) => n?.update(updateNumber));
-// };
+export const writeItem = (
+  itemsCount: { [key: number]: number },
+  destroys: { [key: number]: () => any },
+  textureId: number,
+  destroyItem: () => any
+) => {
+  itemsCount[textureId] = itemsCount[textureId] ? itemsCount[textureId] + 1 : 1;
+
+  if (itemsCount[textureId] === 1) destroys[textureId] = destroyItem;
+  else destroyItem();
+};
+
+export const clearItems = (
+  itemsCount: { [key: string]: number },
+  destroys: { [key: string]: () => any }
+) => {
+  Object.keys(itemsCount)
+    .filter((key) => itemsCount[key] === 0)
+    .forEach((key) => {
+      destroys[key]();
+      destroys[key] = () => true;
+    });
+};
+
+export const isRecipeCompleted = (
+  { craft }: Recipe,
+  itemsCount: { [key: string]: number }
+) => {
+  let ok = true;
+  for (let textureId of Object.keys(craft)) {
+    if (
+      !itemsCount[textureId] ||
+      itemsCount[textureId] < craft[textureId as any]
+    ) {
+      ok = false;
+      break;
+    }
+  }
+  if (ok) {
+    Object.keys(craft).forEach((textureId) => {
+      itemsCount[textureId] -= craft[textureId as any];
+    });
+  }
+  return ok;
+};
 
 export const getBuildings = (field: MutableRefObject<Field>) => {
   return Object.values(field.current)
@@ -91,6 +137,16 @@ export const getBuildings = (field: MutableRefObject<Field>) => {
     .filter((v) => v);
 };
 
-export const deepSearchForBlock = (from: BuildingAPI) => {
-  
-}
+export const saveField = (field: { [key: string]: SavedBuilding }) => {
+  AsyncStorage.setItem("field", JSON.stringify(field));
+};
+
+export const restoreField = async (): Promise<
+  | {
+      [key: string]: SavedBuilding;
+    }
+  | undefined
+> => {
+  const field = await AsyncStorage.getItem("field");
+  return field ? JSON.parse(field) : undefined;
+};

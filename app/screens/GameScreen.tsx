@@ -12,44 +12,76 @@ import Animated, {
   useSharedValue,
 } from "react-native-reanimated";
 
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import {
   CELL_BORDER_WIDTH,
   CELL_SIZE,
   COUNT_SIZE,
   FIELD_SIZE,
 } from "../config/sizes";
-import { BuildingAPI, Field, SpawnerAPI, Texture } from "../models";
+import {
+  BuildingAPI,
+  CellAPI,
+  Field,
+  Neighbours,
+  SpawnerAPI,
+  Texture,
+  UIApi,
+} from "../models";
 import { SELECTIONS } from "../enums";
 import { INITIAL_SELECTION } from "../config/values";
-import { BUILDINGS } from "../textures";
-import { clampWorklet, getCoords, getNeighboursList } from "../utils";
+import { BUILDINGS, BUILDINGS_IMAGES } from "../textures";
+import {
+  clampWorklet,
+  getCoords,
+  getNeighboursList,
+  restoreField,
+} from "../utils";
 import { AppContext } from "../context";
 import Underlay from "../components/Underlay";
 import Spawner from "../components/Spawner";
 import Cell from "../components/Cell";
-import UI from "../components/UI";
 import { BACKGROUND_COLOR, CELL_COLOR, UI_COLOR } from "../config/colors";
+import UI from "../components/UI";
 
-const { width: windowWidth, height: windowHeight } = Dimensions.get("screen");
+let { width: windowWidth, height: windowHeight } = Dimensions.get("window");
+
+if (windowHeight > windowWidth) {
+  const h = windowHeight;
+  
+  windowHeight = windowWidth;
+  windowWidth = h;
+}
+
 const initialX = windowWidth / 2;
-const initialY = -FIELD_SIZE / 2 + windowHeight / 2;
+const initialY = 0;
 
 export default function GameScreen() {
   const field = useRef<Field>({});
   const blocks = useRef<Field>({});
+  const cells = useRef<{ [key: string]: CellAPI }>({});
+
   const selection = useRef<SELECTIONS>(INITIAL_SELECTION);
   const selectedBuilding = useRef<Texture>();
   const selectedConnections = useRef<{ [key: string]: BuildingAPI }>({});
   const spawner = useRef<SpawnerAPI>();
+  const UIRef = useRef<UIApi>();
+
+  const initialized = useRef(false);
+
+  const registerCell = (coords: string, ref: CellAPI) => {
+    if (ref) cells.current[coords] = ref;
+  };
 
   const placeBuilding = (coords: string, ref: BuildingAPI) => {
     if (ref && field.current[coords]?.id !== ref.id) {
       field.current[coords] = ref;
       if (ref.id !== BUILDINGS.PIPE.id) blocks.current[coords] = ref;
 
-      ref.initNeighbours(field);
-      getNeighboursList(coords, field).forEach((b) => b.addNeighbour(ref));
+      if (initialized.current) {
+        ref.initNeighbours(field);
+        getNeighboursList(coords, field).forEach((b) => b.addNeighbour(ref));
+      }
     }
   };
 
@@ -61,6 +93,46 @@ export default function GameScreen() {
       b.removeNeighbour(building)
     );
   };
+
+  const init = async () => {
+    const savedField = await restoreField();
+    if (savedField) {
+      Object.keys(savedField).forEach((coords) => {
+        const data = savedField[coords];
+        cells.current[coords].setBuilding({
+          id: data.id,
+          image: BUILDINGS_IMAGES[data.id],
+        });
+      });
+      Object.keys(savedField).forEach((coords) => {
+        const data = savedField[coords];
+
+        const building = field.current[coords];
+
+        const neighbours: Neighbours = {};
+        Object.keys(data.neighbours).forEach(
+          (c) =>
+            (neighbours[c] = {
+              building: field.current[c],
+              servo: data.neighbours[c],
+            })
+        );
+
+        building.neighbours.current = neighbours;
+        if (building.setNeighboursState)
+          building.setNeighboursState(neighbours);
+
+        if (data.metalFormerMode)
+          building.block.setMetalFormerMode!(data.metalFormerMode);
+        else if (data.recipe) building.block.setRecipe!(data.recipe);
+      });
+    }
+    initialized.current = true;
+  };
+
+  useEffect(() => {
+    init();
+  }, []);
 
   const x = useSharedValue(initialX);
   const xOffset = useSharedValue(initialX);
@@ -119,11 +191,12 @@ export default function GameScreen() {
           selectedBuilding,
           selectedConnections,
           spawner,
+          UI: UIRef,
         },
       }}
     >
       <GestureHandlerRootView>
-        <PanGestureHandler onGestureEvent={onGestureEvent}>
+        <PanGestureHandler minDist={30} onGestureEvent={onGestureEvent}>
           <Animated.View style={[fieldStyles.fill]}>
             <PinchGestureHandler onGestureEvent={onPinchEvent}>
               <Animated.View style={[fieldStyles.fill, fieldStyles.camera]}>
@@ -145,9 +218,16 @@ export default function GameScreen() {
                     <View style={[fieldStyles.fill, fieldStyles.rows]}>
                       {times(COUNT_SIZE).map((i) => (
                         <View key={i} style={fieldStyles.row}>
-                          {times(COUNT_SIZE).map((j) => (
-                            <Cell coords={getCoords({ i, j })} key={j} />
-                          ))}
+                          {times(COUNT_SIZE).map((j) => {
+                            const coords = getCoords({ i, j });
+                            return (
+                              <Cell
+                                ref={(ref) => registerCell(coords, ref as any)}
+                                coords={coords}
+                                key={j}
+                              />
+                            );
+                          })}
                         </View>
                       ))}
                     </View>
@@ -158,7 +238,7 @@ export default function GameScreen() {
           </Animated.View>
         </PanGestureHandler>
       </GestureHandlerRootView>
-      <UI />
+      <UI ref={UIRef} />
     </AppContext.Provider>
   );
 }

@@ -13,6 +13,8 @@ import {
 } from "react-native";
 import Animated, {
   Easing,
+  interpolate,
+  SharedValue,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
@@ -22,80 +24,59 @@ import { Texture } from "../models";
 import { BUILDINGS } from "../textures";
 import { CELL_COLOR, UI_COLOR } from "./../config/colors";
 import { AppContext } from "./../context";
+import { inventoryStyles } from './commonStyles';
+
+const AnimatedTouchableOpacity =
+  Animated.createAnimatedComponent(TouchableOpacity);
 
 export default function Inventory({
   inventoryVisible,
-  selectedBuilding,
+  selectedBuildingId,
   setSelectedBuilding,
-  UIVisible
+  UIVisible,
 }: {
-  inventoryVisible: boolean;
-  selectedBuilding: Texture | undefined;
+  inventoryVisible: SharedValue<number>;
+  selectedBuildingId: SharedValue<number | undefined>;
   setSelectedBuilding: (building: Texture) => any;
-  UIVisible: boolean
+  UIVisible: SharedValue<number>;
 }) {
-  const x = useSharedValue(0);
-
   const containerStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: x.value }],
+    transform: [
+      {
+        translateX:
+          -INVENTORY_WIDTH +
+          UIVisible.value *
+            interpolate(inventoryVisible.value, [0, 1], [0, INVENTORY_WIDTH]),
+      },
+    ],
   }));
 
-  useEffect(() => {
-    if (inventoryVisible && UIVisible) x.value = withTiming(0);
-    else x.value = withTiming(-INVENTORY_WIDTH);
-  }, [inventoryVisible, UIVisible]);
+  const getButtonStyle = (buildingId: number) =>
+    useAnimatedStyle(() => ({
+      borderWidth: buildingId === selectedBuildingId.value ? 2 : 0,
+    }));
 
   return (
     <Animated.View style={[styles.container, containerStyle]}>
       <ScrollView
         style={{ width: "100%", height: "100%" }}
         contentContainerStyle={styles.scrollStyle}
+        showsVerticalScrollIndicator={false}
       >
         {Object.values(BUILDINGS)
           .slice(1)
           .map((b) => (
-            <TouchableOpacity
+            <AnimatedTouchableOpacity
               onPress={() => setSelectedBuilding(b)}
               key={b.id}
-              style={[
-                styles.imageContainer,
-                { borderWidth: b.id === selectedBuilding?.id ? 2 : 0 },
-              ]}
+              style={[styles.imageContainer, getButtonStyle(b.id)]}
             >
               <Image source={b.image} style={styles.image} />
-            </TouchableOpacity>
+            </AnimatedTouchableOpacity>
           ))}
       </ScrollView>
     </Animated.View>
   );
 }
 
-const styles = StyleSheet.create({
-  scrollStyle: {
-    gap: 10,
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "flex-end",
-    padding: 20,
-  },
-  imageContainer: {
-    width: INVENTORY_CELL_SIZE,
-    aspectRatio: 1,
-    padding: 10,
-    backgroundColor: CELL_COLOR,
-    borderRadius: 5,
-    borderColor: "white",
-  },
-  image: {
-    width: "100%",
-    height: "100%",
-  },
-  container: {
-    position: "absolute",
-    height: "100%",
-    width: INVENTORY_WIDTH,
-    backgroundColor: UI_COLOR,
-
-    borderWidth: 2,
-  },
-});
+const styles = inventoryStyles

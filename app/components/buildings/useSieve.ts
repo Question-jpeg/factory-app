@@ -3,40 +3,73 @@ import { RESOURCES } from "./../../textures";
 import { useBlock } from "./useBlock";
 import { useRef } from "react";
 
-export const useSieve = (): BlockApi => {
-  const { createItem, stopSpawn, paths, timeout, stack } = useBlock();
+export const useSieve = (coords: string): BlockApi => {
+  const { startSpawn, stopSpawn, paths, pushItemGeneric } = useBlock(coords);
 
-  const availableInput = [
+  const availableInput = useRef([
     RESOURCES.GRAVEL.id,
     RESOURCES.SAND.id,
     RESOURCES.DUST.id,
-  ];
+  ]);
 
   const rules = useRef({
-    [RESOURCES.GRAVEL.id]: { index: 0, list: [] }
-  }) 
+    [RESOURCES.GRAVEL.id]: {
+      index: 0,
+      list: [
+        RESOURCES.BROKEN_LEAD,
+        RESOURCES.BROKEN_COPPER,
+        RESOURCES.BROKEN_GOLD,
+        RESOURCES.BROKEN_IRON,
+        RESOURCES.BROKEN_TIN,
+
+        RESOURCES.COAL,
+        RESOURCES.DIAMOND,
+        RESOURCES.AZURESTONE
+      ],
+    },
+    [RESOURCES.SAND.id]: {
+      index: 0,
+      list: [
+        RESOURCES.CRUSHED_LEAD,
+        RESOURCES.CRUSHED_COPPER,
+        RESOURCES.CRUSHED_GOLD,
+        RESOURCES.CRUSHED_IRON,
+        RESOURCES.CRUSHED_TIN,
+
+        RESOURCES.SHARD_IRIDIUM,
+      ],
+    },
+    [RESOURCES.DUST.id]: {
+      index: 0,
+      list: [
+        RESOURCES.POWDERED_LEAD,
+        RESOURCES.POWDERED_COPPER,
+        RESOURCES.POWDERED_GOLD,
+        RESOURCES.POWDERED_IRON,
+        RESOURCES.POWDERED_TIN,
+
+        RESOURCES.REDSTONE,
+        RESOURCES.SULFUR,
+        RESOURCES.GLOWSTONE
+      ],
+    },
+  });
 
   const pushItem = ({
-    texture,
+    textureId,
     destroyItem,
   }: {
-    texture: Texture;
+    textureId: number;
     destroyItem: () => any;
   }) => {
-    //  if (timeout.current) {
-    //   if (stack.current.length === 5) destroyItem();
-    //   else stack.current.push({ texture, destroyItem });
-    // } else
-    //   timeout.current = setTimeout(() => {
-    //     destroyItem();
-    //     createItem(rules[texture.id]);
-
-    //     timeout.current = undefined;
-    //     if (stack.current.length) pushItem(stack.current.pop());
-    //   }, 500);
+    const data = rules.current[textureId];
+    pushItemGeneric({
+      texture: data.list[data.index++ % data.list.length],
+      destroyItem,
+      milliseconds: 1500,
+      iterations: 1,
+    });
   };
-
-  const startSpawn = () => {};
 
   return { startSpawn, stopSpawn, availableInput, pushItem, paths };
 };

@@ -15,16 +15,32 @@ import { getNeighboursDict } from "../utils";
 import { times } from "lodash";
 import { useExtractor } from "./buildings/useExtractor";
 import { useHammer } from "./buildings/useHammer";
-// import { useCompressor } from "./buildings/useCompressor";
-import { useSieve } from './buildings/useSieve';
-import { useChest } from './buildings/useChest';
+import { useCompressor } from "./buildings/useCompressor";
+import { useSieve } from "./buildings/useSieve";
+import { useChest } from "./buildings/useChest";
+import { useFernace } from "./buildings/useFernace";
+import { useMelter } from "./buildings/useMelter";
+import { useMetalFormer } from "./buildings/useMetalFormer";
+import { useBench } from "./buildings/useBench";
+import { useMacerator } from "./buildings/useMacerator";
+import { useTreeFarm } from "./buildings/useTreeFarm";
+import { useSawmill } from "./buildings/useSawmill";
+import { useStringFarm } from "./buildings/useStringFarm";
 
 const MAPPING = {
-  [BUILDINGS.EXTRACTOR.id]: () => useExtractor(),
-  [BUILDINGS.HAMMER.id]: () => useHammer(),
-  // [BUILDINGS.COMPRESSOR.id]: () => useCompressor(),
-  [BUILDINGS.SIEVE.id]: () => useSieve(),
-  // [BUILDINGS.CHEST.id]: () => useChest(),
+  [BUILDINGS.EXTRACTOR.id]: (coords: string) => useExtractor(coords),
+  [BUILDINGS.HAMMER.id]: (coords: string) => useHammer(coords),
+  [BUILDINGS.COMPRESSOR.id]: (coords: string) => useCompressor(coords),
+  [BUILDINGS.SIEVE.id]: (coords: string) => useSieve(coords),
+  [BUILDINGS.CHEST.id]: (coords: string) => useChest(coords),
+  [BUILDINGS.FURNACE.id]: (coords: string) => useFernace(coords),
+  [BUILDINGS.MELTER.id]: (coords: string) => useMelter(coords),
+  [BUILDINGS.METAL_FORMER.id]: (coords: string) => useMetalFormer(coords),
+  [BUILDINGS.BENCH.id]: (coords: string) => useBench(coords),
+  [BUILDINGS.MACERATOR.id]: (coords: string) => useMacerator(coords),
+  [BUILDINGS.TREE_FARM.id]: (coords: string) => useTreeFarm(coords),
+  [BUILDINGS.SAWMILL.id]: (coords: string) => useSawmill(coords),
+  [BUILDINGS.STRING_FARM.id]: (coords: string) => useStringFarm(coords),
 };
 
 const Building = React.forwardRef(
@@ -44,7 +60,9 @@ const Building = React.forwardRef(
     const G = useRef(0);
     const H = useRef(0);
     const Connection = useRef<BuildingAPI>();
-    const block = MAPPING[texture.id]();
+    const block = MAPPING[texture.id](coords);
+
+    const isAnimatingOverflow = useRef(false);
 
     useImperativeHandle(
       ref,
@@ -58,11 +76,29 @@ const Building = React.forwardRef(
           G,
           H,
           Connection,
+          animateOverflow: () => {
+            if (!isAnimatingOverflow.current) {
+              isAnimatingOverflow.current = true;
+              setEditMode(EDIT_MODES.DELETE);
+              setTimeout(() => {
+                setEditMode(EDIT_MODES.NONE);
+                setTimeout(() => {
+                  setEditMode(EDIT_MODES.DELETE);
+                  setTimeout(() => {
+                    setEditMode(EDIT_MODES.NONE);
+                    setTimeout(() => {
+                      isAnimatingOverflow.current = false;
+                    }, 500);
+                  }, 500);
+                }, 500);
+              }, 500);
+            }
+          },
           refreshNode: () => {
             G.current = 0;
             H.current = 0;
-            Connection.current = undefined
-          },          
+            Connection.current = undefined;
+          },
           setEditMode,
           initNeighbours: (field) => {
             const buildings = getNeighboursDict(

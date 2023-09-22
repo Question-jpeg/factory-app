@@ -1,48 +1,100 @@
-// import { useRef } from "react";
-// import { BlockApi, Texture } from "../../models";
-// import { RESOURCE_BLOCKS } from "./../../textures";
-// import { useBlock } from "./useBlock";
+import { BlockApi, Texture } from "../../models";
+import { RESOURCES } from "./../../textures";
+import { useBlock } from "./useBlock";
+import { useRef } from "react";
 
-// export const useCompressor = (): BlockApi => {
-//   const { createItem, stopSpawn, paths } = useBlock();
+export const useCompressor = (coords: string): BlockApi => {
+  const {
+    startSpawn,
+    stopSpawn,
+    paths,
+    pushItemGeneric,
+    itemsCount,
+    countItem,
+  } = useBlock(coords);
 
-//   const itemsCount = useRef<{ [key: string]: number }>({
-//     [RESOURCE_BLOCKS.COBBLESTONE.id]: 0,
-//     [RESOURCE_BLOCKS.GRAVEL.id]: 0,
-//     [RESOURCE_BLOCKS.SAND.id]: 0,
-//     [RESOURCE_BLOCKS.DUST.id]: 0,
-//   });
-//   const availableInput = [
-//     RESOURCE_BLOCKS.COBBLESTONE.id,
-//     RESOURCE_BLOCKS.GRAVEL.id,
-//     RESOURCE_BLOCKS.SAND.id,
-//     RESOURCE_BLOCKS.DUST.id,
-//   ];
+  const availableInput = useRef([
+    RESOURCES.BROKEN_LEAD.id,
+    RESOURCES.BROKEN_COPPER.id,
+    RESOURCES.BROKEN_GOLD.id,
+    RESOURCES.BROKEN_IRON.id,
+    RESOURCES.BROKEN_TIN.id,
 
-//   const rules: { [key: string]: Texture } = {
-//     [RESOURCE_BLOCKS.COBBLESTONE.id]: RESOURCE_BLOCKS.COMPRESSED_COBBLESTONE,
-//     [RESOURCE_BLOCKS.GRAVEL.id]: RESOURCE_BLOCKS.COMPRESSED_GRAVEL,
-//     [RESOURCE_BLOCKS.SAND.id]: RESOURCE_BLOCKS.COMPRESSED_SAND,
-//     [RESOURCE_BLOCKS.DUST.id]: RESOURCE_BLOCKS.COMPRESSED_DUST,
-//   };
+    RESOURCES.CRUSHED_LEAD.id,
+    RESOURCES.CRUSHED_COPPER.id,
+    RESOURCES.CRUSHED_GOLD.id,
+    RESOURCES.CRUSHED_IRON.id,
+    RESOURCES.CRUSHED_TIN.id,
 
-//   const pushItem = ({
-//     texture,
-//     destroyItem,
-//   }: {
-//     texture: Texture;
-//     destroyItem: () => any;
-//   }) => {
-//     destroyItem();
+    RESOURCES.POWDERED_LEAD.id,
+    RESOURCES.POWDERED_COPPER.id,
+    RESOURCES.POWDERED_GOLD.id,
+    RESOURCES.POWDERED_IRON.id,
+    RESOURCES.POWDERED_TIN.id,
 
-//     itemsCount.current[texture.id]++;
-//     if (itemsCount.current[texture.id] === 9) {
-//       itemsCount.current[texture.id] = 0;
-//       createItem(rules[texture.id]);
-//     }
-//   };
+    RESOURCES.SHARD_IRIDIUM.id,
+    RESOURCES.CARBON_MESH.id,
+    RESOURCES.DUST_ENERGIUM.id,
+    RESOURCES.DUST_AZURE.id,
+  ]);
+  const rules: { [key: number]: Texture } = {
+    [RESOURCES.BROKEN_LEAD.id]: RESOURCES.LEAD_GRAVEL,
+    [RESOURCES.BROKEN_COPPER.id]: RESOURCES.COPPER_GRAVEL,
+    [RESOURCES.BROKEN_GOLD.id]: RESOURCES.GOLD_GRAVEL,
+    [RESOURCES.BROKEN_IRON.id]: RESOURCES.IRON_GRAVEL,
+    [RESOURCES.BROKEN_TIN.id]: RESOURCES.TIN_GRAVEL,
 
-//   const startSpawn = () => {};
+    [RESOURCES.CRUSHED_LEAD.id]: RESOURCES.LEAD_SAND,
+    [RESOURCES.CRUSHED_COPPER.id]: RESOURCES.COPPER_SAND,
+    [RESOURCES.CRUSHED_GOLD.id]: RESOURCES.GOLD_SAND,
+    [RESOURCES.CRUSHED_IRON.id]: RESOURCES.IRON_SAND,
+    [RESOURCES.CRUSHED_TIN.id]: RESOURCES.TIN_SAND,
 
-//   return { startSpawn, stopSpawn, availableInput, pushItem, paths };
-// };
+    [RESOURCES.POWDERED_LEAD.id]: RESOURCES.LEAD_DUST,
+    [RESOURCES.POWDERED_COPPER.id]: RESOURCES.COPPER_DUST,
+    [RESOURCES.POWDERED_GOLD.id]: RESOURCES.GOLD_DUST,
+    [RESOURCES.POWDERED_IRON.id]: RESOURCES.IRON_DUST,
+    [RESOURCES.POWDERED_TIN.id]: RESOURCES.TIN_DUST,
+
+    [RESOURCES.SHARD_IRIDIUM.id]: RESOURCES.ORE_IRIDIUM,
+    [RESOURCES.CARBON_MESH.id]: RESOURCES.CARBON_PLATE,
+    [RESOURCES.DUST_ENERGIUM.id]: RESOURCES.CRYSTAL,
+    [RESOURCES.DUST_AZURE.id]: RESOURCES.PLATE_AZURE,
+  };
+  const uniquePathItems: number[] = [
+    RESOURCES.SHARD_IRIDIUM.id,
+    RESOURCES.CARBON_MESH.id,
+    RESOURCES.DUST_ENERGIUM.id,
+    RESOURCES.DUST_AZURE.id,
+  ];
+  const counts: { [key: number]: number } = {
+    [RESOURCES.CARBON_MESH.id]: 1,
+    [RESOURCES.DUST_ENERGIUM.id]: 1,
+    [RESOURCES.DUST_AZURE.id]: 1,
+  };
+
+  const pushItem = ({
+    textureId,
+    destroyItem,
+  }: {
+    textureId: number;
+    destroyItem: () => any;
+  }) => {
+    destroyItem();
+    countItem(textureId);
+
+    if (itemsCount.current[textureId] === (counts[textureId] ?? 4)) {
+      itemsCount.current[textureId] = 0;
+
+      const resultTexture = rules[textureId];
+      pushItemGeneric({
+        texture: resultTexture,
+        customPathTexture: uniquePathItems.includes(textureId)
+          ? resultTexture
+          : RESOURCES.IRON_GRAVEL,
+      });
+    }
+  };
+
+  return { startSpawn, stopSpawn, availableInput, pushItem, paths };
+};

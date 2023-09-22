@@ -1,4 +1,10 @@
-import React, { MutableRefObject, useContext, useState } from "react";
+import React, {
+  MutableRefObject,
+  useContext,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from "react";
 import { StyleSheet, TouchableOpacity, View } from "react-native";
 import {
   BACKGROUND_COLOR,
@@ -11,17 +17,15 @@ import { BUILDINGS } from "../textures";
 import Building from "./Building";
 import { AppContext } from "./../context";
 import { EDIT_MODES, SELECTIONS } from "../enums";
-import { Texture } from "../models";
+import { CellAPI, Texture } from "../models";
 import Pipe from "./Pipe";
-import Spawner from "./Spawner";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
-  withTiming,
 } from "react-native-reanimated";
 import { isNeighbours } from "../utils";
 
-export default function Cell({ coords }: { coords: string }) {
+const Cell = React.forwardRef(({ coords }: { coords: string }, ref) => {
   const {
     selection,
     placeBuilding,
@@ -29,9 +33,18 @@ export default function Cell({ coords }: { coords: string }) {
     field,
     selectedBuilding,
     selectedConnections,
+    UI,
   } = useContext(AppContext);
   const [building, setBuilding] = useState<Texture>();
   const overlayMode = useSharedValue<EDIT_MODES>(EDIT_MODES.NONE);
+
+  useImperativeHandle(
+    ref,
+    () =>
+      ({
+        setBuilding,
+      } as CellAPI)
+  );
 
   const overlayStyle = useAnimatedStyle(() => ({
     backgroundColor:
@@ -49,65 +62,75 @@ export default function Cell({ coords }: { coords: string }) {
   };
 
   const onPress = () => {
-    if (!field.current[coords]) {
-      if (selection.current === SELECTIONS.PIPE) setBuilding(BUILDINGS.PIPE);
-      else if (
-        selection.current === SELECTIONS.BUILD &&
-        selectedBuilding.current
-      )
-        setBuilding(selectedBuilding.current);
-    } else if (
-      selection.current === SELECTIONS.CONNECTION ||
-      selection.current === SELECTIONS.SERVO
-    ) {
-      if (
-        overlayMode.value === EDIT_MODES.CONNECT ||
-        overlayMode.value === EDIT_MODES.SERVO
+    if (selection.current !== SELECTIONS.PLAY) {
+      if (!field.current[coords]) {
+        if (selection.current === SELECTIONS.PIPE) setBuilding(BUILDINGS.PIPE);
+        else if (
+          selection.current === SELECTIONS.BUILD &&
+          selectedBuilding.current
+        )
+          setBuilding(selectedBuilding.current);
+      } else if (
+        selection.current === SELECTIONS.CONNECTION ||
+        selection.current === SELECTIONS.SERVO
       ) {
-        delete selectedConnections.current[coords];
-        setEditMode(EDIT_MODES.NONE);
-      } else {
-        setEditMode(
-          selection.current === SELECTIONS.CONNECTION
-            ? EDIT_MODES.CONNECT
-            : EDIT_MODES.SERVO
-        );
-        selectedConnections.current[coords] = field.current[coords];
-        const selBuildings = Object.values(selectedConnections.current);
+        if (
+          overlayMode.value === EDIT_MODES.CONNECT ||
+          overlayMode.value === EDIT_MODES.SERVO
+        ) {
+          delete selectedConnections.current[coords];
+          setEditMode(EDIT_MODES.NONE);
+        } else {
+          setEditMode(
+            selection.current === SELECTIONS.CONNECTION
+              ? EDIT_MODES.CONNECT
+              : EDIT_MODES.SERVO
+          );
+          selectedConnections.current[coords] = field.current[coords];
+          const selBuildings = Object.values(selectedConnections.current);
 
-        if (selBuildings.length === 2) {
-          const pipe = selBuildings.find((b) => b.id === BUILDINGS.PIPE.id);
-          const cube = selBuildings.find((b) => b.id !== BUILDINGS.PIPE.id);
+          if (selBuildings.length === 2) {
+            const pipe = selBuildings.find((b) => b.id === BUILDINGS.PIPE.id);
+            const cube = selBuildings.find((b) => b.id !== BUILDINGS.PIPE.id);
+            const cubes = selBuildings.filter(
+              (b) => b.id !== BUILDINGS.PIPE.id
+            );
 
-          const coordsA = selBuildings[0].coords;
-          const coordsB = selBuildings[1].coords;
-          if (
-            isNeighbours(coordsA, coordsB) &&
-            (selection.current === SELECTIONS.CONNECTION ? true : pipe && cube)
-          ) {
-            selBuildings.forEach((b) => b.setEditMode(EDIT_MODES.NONE));
-            selectedConnections.current = {};
+            const coordsA = selBuildings[0].coords;
+            const coordsB = selBuildings[1].coords;
+            if (
+              isNeighbours(coordsA, coordsB) &&
+              (selection.current === SELECTIONS.CONNECTION
+                ? cubes.length < 2
+                : pipe && cube)
+            ) {
+              selBuildings.forEach((b) => b.setEditMode(EDIT_MODES.NONE));
+              selectedConnections.current = {};
 
-            if (selection.current === SELECTIONS.CONNECTION) {
-              selBuildings[0].toggleNeighbour(selBuildings[1]);
-              selBuildings[1].toggleNeighbour(selBuildings[0]);
+              if (selection.current === SELECTIONS.CONNECTION) {
+                selBuildings[0].toggleNeighbour(selBuildings[1]);
+                selBuildings[1].toggleNeighbour(selBuildings[0]);
+              } else {
+                pipe!.toggleServo(cube!);
+                cube!.toggleServo(pipe!);
+              }
             } else {
-              pipe!.toggleServo(cube!);
-              cube!.toggleServo(pipe!);
+              selBuildings
+                .find((b) => b.coords !== coords)
+                ?.setEditMode(EDIT_MODES.NONE);
+              selectedConnections.current = { [coords]: field.current[coords] };
             }
-          } else {
-            selBuildings
-              .find((b) => b.coords !== coords)
-              ?.setEditMode(EDIT_MODES.NONE);
-            selectedConnections.current = { [coords]: field.current[coords] };
           }
         }
-      }
-    } else if (selection.current === SELECTIONS.DELETE) {
-      field.current[coords].setEditMode(EDIT_MODES.NONE);
+      } else if (selection.current === SELECTIONS.DELETE) {
+        setEditMode(EDIT_MODES.NONE);
 
-      destroyBuilding(field.current[coords]);
-      setBuilding(undefined);
+        destroyBuilding(field.current[coords]);
+        setBuilding(undefined);
+      } else if (building?.id === BUILDINGS.BENCH.id)
+        UI.current?.setBench(field.current[coords]);
+      else if (building?.id === BUILDINGS.METAL_FORMER.id)
+        UI.current?.setMetalFormer(field.current[coords]);
     }
   };
 
@@ -131,7 +154,11 @@ export default function Cell({ coords }: { coords: string }) {
       />
     </TouchableOpacity>
   );
-}
+});
+
+Cell.displayName = "Cell";
+
+export default Cell;
 
 const styles = StyleSheet.create({
   cell: {

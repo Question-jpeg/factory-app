@@ -46,6 +46,7 @@ const Pipe = React.forwardRef(
           id: BUILDINGS.PIPE.id,
           coords,
           neighbours,
+          setNeighboursState,
           setEditMode,
           F: () => G.current + H.current,
           G,

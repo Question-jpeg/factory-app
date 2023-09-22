@@ -1,41 +1,44 @@
 import React, { useEffect, useImperativeHandle, useRef, useState } from "react";
-import { Image, StyleSheet, View } from "react-native";
+import { Alert, Image, StyleSheet, View } from "react-native";
 import Item from "./Item";
 import { CELL_SIZE } from "./../config/sizes";
 import { RESOURCES } from "../textures";
-import { SpawnerAPI, Item as ItemModel } from "../models";
+import { SpawnerAPI, Item as ItemModel, ItemAPI } from "../models";
+import { times } from "lodash";
+
+const N = 1000;
 
 const Spawner = React.forwardRef(({}, ref) => {
-  const [items, setItems] = useState<{ item: ItemModel; id: number }[]>([]);
+  const items = useRef<ItemAPI[]>([]);
   const itemId = useRef(0);
+
+  const addItem = (ref: ItemAPI, id: number) => {
+    if (ref && !items.current[id]) items.current[id] = ref;
+  };
 
   useImperativeHandle(
     ref,
     () =>
       ({
-        createItem: (item) => {
-          setItems((prev) => {
-            return [...prev, { item, id: itemId.current++ }];
-          });
+        createItem: ({ initPath, texture }) => {
+          while (true) {
+            const item = items.current[itemId.current++ % N];
+            if (item.isFree.current) {
+              item.create(texture, initPath);
+              break;
+            }
+          }
         },
         clearItems: () => {
-          setItems([]);
+          items.current.forEach((item) => item.reset());
         },
       } as SpawnerAPI)
   );
 
   return (
     <View pointerEvents="none" style={styles.container}>
-      {items.map(({ item, id }) => (
-        <Item
-          key={id}
-          item={item}
-          destroySelf={() =>
-            setItems((prev) => {
-              return prev.filter(({ id: itemId }) => itemId !== id);
-            })
-          }
-        />
+      {times(N).map((i) => (
+        <Item key={i} ref={(ref) => addItem(ref as ItemAPI, i)} />
       ))}
     </View>
   );

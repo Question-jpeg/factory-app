@@ -1,16 +1,17 @@
 import { BlockApi, Texture } from "../../models";
 import { RESOURCES } from "./../../textures";
 import { useBlock } from "./useBlock";
+import { useRef } from 'react';
 
-export const useExtractor = (): BlockApi => {
-  const { intervalRef, createItem, stopSpawn, paths } = useBlock();
+export const useExtractor = (coords: string): BlockApi => {
+  const { timer, paths, stopSpawn, createItem } = useBlock(coords);
 
-  const availableInput: number[] = [];
+  const availableInput = useRef([]);
 
   const pushItem = () => {};
 
   const startSpawn = () => {
-    intervalRef.current = setInterval(() => {
+    timer.current = setInterval(() => {
       createItem(RESOURCES.COBBLESTONE);
     }, 500);
   };

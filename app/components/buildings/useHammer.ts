@@ -3,14 +3,14 @@ import { RESOURCES } from "./../../textures";
 import { useBlock } from "./useBlock";
 import { useRef } from "react";
 
-export const useHammer = (): BlockApi => {
-  const { createItem, stopSpawn, paths, timeout, stack } = useBlock();
+export const useHammer = (coords: string): BlockApi => {
+  const { paths, startSpawn, stopSpawn, pushItemGeneric } = useBlock(coords);
 
-  const availableInput = [
+  const availableInput = useRef([
     RESOURCES.COBBLESTONE.id,
     RESOURCES.GRAVEL.id,
     RESOURCES.SAND.id,
-  ];
+  ]);
 
   const rules = {
     [RESOURCES.COBBLESTONE.id]: RESOURCES.GRAVEL,
@@ -19,26 +19,19 @@ export const useHammer = (): BlockApi => {
   };
 
   const pushItem = ({
-    texture,
+    textureId,
     destroyItem,
   }: {
-    texture: Texture;
+    textureId: number;
     destroyItem: () => any;
   }) => {
-    if (timeout.current) {
-      if (stack.current.length === 5) destroyItem();
-      else stack.current.push({ texture, destroyItem });
-    } else
-      timeout.current = setTimeout(() => {
-        destroyItem();
-        createItem(rules[texture.id]);
-
-        timeout.current = undefined;
-        if (stack.current.length) pushItem(stack.current.pop());
-      }, 1500);
+    pushItemGeneric({
+      texture: rules[textureId],
+      destroyItem,
+      milliseconds: 1500,
+      iterations: 1
+    });
   };
-
-  const startSpawn = () => {};
 
   return { startSpawn, stopSpawn, availableInput, pushItem, paths };
 };

@@ -1,16 +1,5 @@
-import React, {
-  useContext,
-  useEffect,
-  useImperativeHandle,
-  useState,
-} from "react";
-import {
-  Dimensions,
-  Image,
-  StyleSheet,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import React from "react";
+import { Image, StyleSheet, TouchableOpacity, View } from "react-native";
 import {
   MaterialIcons,
   MaterialCommunityIcons,
@@ -18,14 +7,17 @@ import {
 } from "@expo/vector-icons";
 import { ICONS } from "../textures";
 import { UI_COLOR } from "../config/colors";
-import { SIDEBAR_MARGIN_VERTICAL, SIDEBAR_WIDTH } from "../config/sizes";
-import { AppContext } from "../context";
-import { SideBarAPI } from "../models";
+import { SIDEBAR_WIDTH } from "../config/sizes";
 import { SELECTIONS } from "../enums";
-import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
+import Animated, {
+  interpolate,
+  SharedValue,
+  useAnimatedStyle,
+} from "react-native-reanimated";
 import { SIDEBAR_GAP } from "./../config/sizes";
 
-const { width: windowWidth, height: windowHeight } = Dimensions.get("window");
+const AnimatedTouchableOpacity =
+  Animated.createAnimatedComponent(TouchableOpacity);
 
 const iconContainerPadding = 5;
 
@@ -79,75 +71,98 @@ const sideBarData = [
 
 export default function Sidebar({
   inventoryVisible,
+  recipeSelectorVisible,
+  metalFormerModeSelectorVisible,
   toggleInventoryVisible,
   selectedOption,
   setSelectedOption,
   UIVisible,
-  toggleUIVisible
+  toggleUIVisible,
 }: {
-  inventoryVisible: boolean;
+  inventoryVisible: SharedValue<number>;
+  recipeSelectorVisible: SharedValue<number>;
+  metalFormerModeSelectorVisible: SharedValue<number>;
   toggleInventoryVisible: () => any;
-  selectedOption: SELECTIONS;
+  selectedOption: SharedValue<SELECTIONS>;
   setSelectedOption: (opt: SELECTIONS) => any;
-  UIVisible: boolean;
-  toggleUIVisible: () => any
+  UIVisible: SharedValue<number>;
+  toggleUIVisible: () => any;
 }) {
-  const x = useSharedValue(0);
-
   const sideBarStyle = useAnimatedStyle(() => ({
-    transform: [{translateX: x.value}]
-  }))
+    transform: [
+      {
+        translateX: interpolate(
+          UIVisible.value,
+          [0, 1],
+          [SIDEBAR_WIDTH - SIDEBAR_GAP, 0]
+        ),
+      },
+    ],
+  }));
 
-  useEffect(() => {
-    if (UIVisible) x.value = withTiming(0)
-    else x.value = withTiming(SIDEBAR_WIDTH - SIDEBAR_GAP)
-  }, [UIVisible])
+  const inventoryButtonStyle = useAnimatedStyle(() => ({
+    borderWidth:
+      inventoryVisible.value *
+      (1 - recipeSelectorVisible.value) *
+      (1 - metalFormerModeSelectorVisible.value) *
+      2,
+  }));
+
+  const getButtonStyle = (selection: SELECTIONS) =>
+    useAnimatedStyle(() => ({
+      borderWidth: selectedOption.value === selection ? 2 : 0,
+    }));
+
+  const getReadyIconStyle = (outputRange: number[]) =>
+    useAnimatedStyle(() => ({
+      opacity: interpolate(UIVisible.value, [0, 1], outputRange),
+    }));
 
   return (
-    <Animated.View
-      style={[
-        styles.sideBar,
-        sideBarStyle
-      ]}
-    >
+    <Animated.View style={[styles.sideBar, sideBarStyle]}>
       <View style={styles.topBar}>
         <TouchableOpacity
           onPress={toggleUIVisible}
-          style={[
-            styles.iconContainer,
-          ]}
+          style={[styles.iconContainer]}
         >
-          {UIVisible ? (
-            <Feather name="check-circle" size={36} color="white" />
-          ) : (
+          <Animated.View
+            style={[
+              StyleSheet.absoluteFillObject,
+              { justifyContent: "center", alignItems: "center" },
+              getReadyIconStyle([1, 0]),
+            ]}
+          >
             <Feather name="settings" size={36} color="white" />
-          )}
+          </Animated.View>
+          <Animated.View
+            style={[
+              StyleSheet.absoluteFillObject,
+              { justifyContent: "center", alignItems: "center" },
+              getReadyIconStyle([0, 1]),
+            ]}
+          >
+            <Feather name="check-circle" size={36} color="white" />
+          </Animated.View>
         </TouchableOpacity>
-        <TouchableOpacity
+        <AnimatedTouchableOpacity
           onPress={toggleInventoryVisible}
-          style={[
-            styles.iconContainer,
-            { borderWidth: inventoryVisible ? 2 : 0 },
-          ]}
+          style={[styles.iconContainer, inventoryButtonStyle]}
         >
           <MaterialCommunityIcons name="cube" size={36} color="white" />
-        </TouchableOpacity>
+        </AnimatedTouchableOpacity>
       </View>
       {sideBarData.map((d, i) => (
-        <TouchableOpacity
+        <AnimatedTouchableOpacity
           key={i}
           onPress={() => setSelectedOption(d.selection)}
-          style={[
-            styles.iconContainer,
-            { borderWidth: selectedOption === d.selection ? 2 : 0 },
-          ]}
+          style={[styles.iconContainer, getButtonStyle(d.selection)]}
         >
           {d.icon ? (
             <Image source={d.icon} style={[styles.image, d.style]} />
           ) : (
             d.expoIcon
           )}
-        </TouchableOpacity>
+        </AnimatedTouchableOpacity>
       ))}
     </Animated.View>
   );

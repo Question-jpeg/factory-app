@@ -5,6 +5,7 @@ export const SIDEBAR_WIDTH = 90
 export const SIDEBAR_GAP = 20
 export const INVENTORY_WIDTH = 230
 export const INVENTORY_CELL_SIZE = 70
+export const CRAFT_ITEM_SIZE = 30
 export const COUNT_SIZE = 30;
 export const FIELD_SIZE =
   CELL_SIZE * COUNT_SIZE - CELL_BORDER_WIDTH * (COUNT_SIZE - 1);
